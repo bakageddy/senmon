@@ -1,0 +1,11 @@
+[package]
+name = "senmon"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+askama = { version = "0.12.1", features = ["serde", "with-axum"] }
+axum = { version = "0.7.7", features = ["multipart"] }
+serde = { version = "1.0.214", features = ["derive"] }
+serde_json = "1.0.132"
+tokio = { version = "1.41.0", features = ["full"] }
