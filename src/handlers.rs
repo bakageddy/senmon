@@ -1,29 +1,26 @@
-use std::io::Read;
 use axum::{http::StatusCode, response::Html, Form};
+use ring::rand::SecureRandom;
+use std::io::Read;
+use std::ops::Deref;
+use std::sync::{Arc, Mutex};
 
 use serde::Deserialize;
+
+#[derive(Clone)]
+pub struct DatabaseConnection {
+    pub ctx: Arc<Mutex<rusqlite::Connection>>,
+}
 
 #[derive(Deserialize)]
 pub struct DownloadReq {
     file_name: String,
 }
 
-pub struct UploadFileReq<'a> {
-    file_name: &'a str,
-    file_contents: &'a str,
-    password: &'a str,
-    salt: &'a str,
-}
-
-impl<'a> UploadFileReq<'a> {
-    pub fn new() -> Self {
-        Self {
-            file_name: "",
-            file_contents: "",
-            password: "",
-            salt: "",
-        }
-    }
+pub struct UploadFile {
+    file_name: String,
+    file_contents: String,
+    password: String,
+    salt: String,
 }
 
 pub async fn home() -> Html<String> {
@@ -51,23 +48,57 @@ pub async fn download_file(
     Ok(data)
 }
 
-pub async fn upload_file(mut form_input: axum::extract::Multipart) -> StatusCode {
-    let mut file_name: String;
-    let mut file_contents: String;
-    let mut password: String;
-    while let Ok(Some(field)) = form_input.next_field().await {
+pub fn generate_salt() -> String {
+    let rng = ring::rand::SystemRandom::new();
+    let mut salt: [u8; 32] = [0;32];
+    rng.fill(&mut salt).unwrap();
+    unsafe {std::str::from_utf8_unchecked(&salt).to_string()}
+}
+
+pub async fn upload_file(
+    axum::extract::State(db): axum::extract::State<DatabaseConnection>,
+    form_input: axum::extract::Multipart,
+) -> StatusCode {
+    let req = match parse_multipart(form_input).await {
+        Ok(r) => r,
+        Err(x) => return x,
+    };
+    let ctx = db.ctx.deref().lock().unwrap();
+    let _ = ctx.execute(
+        "INSERT INTO file_state(file_name, salt) VALUES(?1, ?2)",
+        [req.file_name, req.salt],
+    ).unwrap();
+    StatusCode::OK
+}
+
+pub async fn parse_multipart(
+    mut form_response: axum::extract::Multipart,
+) -> Result<UploadFile, StatusCode> {
+    let mut file_name: String = String::new();
+    let mut file_contents: String = String::new();
+    let mut password: String = String::new();
+    while let Ok(Some(field)) = form_response.next_field().await {
         let field_name = field.name();
-        if field_name.is_none() {
-            return StatusCode::BAD_REQUEST;
-        }
-        if field_name.unwrap() == "file" {
-            file_name = field.file_name().unwrap_or("default_file_name").to_string();
-            file_contents = field.text().await.unwrap();
-        } else if field_name.unwrap() == "pwd" {
-            password = field.text().await.expect("Required: password").to_string();
-        } else {
-            return StatusCode::BAD_REQUEST;
+        match field_name {
+            Some("file") => {
+                file_name = field.file_name().unwrap_or("default_file_name").to_string();
+                file_contents = field.text().await.unwrap_or("".to_string());
+            }
+            Some("pwd") => {
+                password = field.text().await.unwrap_or("default".to_string());
+            }
+            Some(_) => {
+                return Err(StatusCode::BAD_REQUEST);
+            }
+            None => {
+                return Err(StatusCode::BAD_REQUEST);
+            }
         }
     }
-    StatusCode::OK
+    Ok(UploadFile {
+        file_name,
+        file_contents,
+        password,
+        salt: generate_salt(),
+    })
 }

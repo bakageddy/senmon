@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 askama = { version = "0.12.1", features = ["serde", "with-axum"] }
 axum = { version = "0.7.7", features = ["multipart"] }
+ring = "0.17.8"
+rusqlite = "0.32.1"
 serde = { version = "1.0.214", features = ["derive"] }
 serde_json = "1.0.132"
 tokio = { version = "1.41.0", features = ["full"] }
