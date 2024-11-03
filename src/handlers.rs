@@ -105,10 +105,10 @@ pub fn generate_salt() -> String {
 pub async fn upload_file(
     axum::extract::State(db): axum::extract::State<DatabaseConnection>,
     form_input: axum::extract::Multipart,
-) -> StatusCode {
+) -> axum::response::Result<String, StatusCode> {
     let req = match parse_multipart(form_input).await {
         Ok(r) => r,
-        Err(x) => return x,
+        Err(x) => return Err(x),
     };
     let ctx = db.ctx.deref().lock().unwrap();
     let res = encrypt_contents(req);
@@ -118,8 +118,8 @@ pub async fn upload_file(
             [res.file_name.clone(), res.salt.clone()],
         )
         .unwrap();
-    let _ = std::fs::write(res.file_name, res.file_contents).unwrap();
-    StatusCode::OK
+    let _ = std::fs::write(res.file_name, &res.file_contents).unwrap();
+    Ok(res.file_contents)
 }
 
 pub fn encrypt_contents(mut request: UploadFile) -> UploadFile {

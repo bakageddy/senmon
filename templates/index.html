@@ -4,12 +4,14 @@
 		<title>Senmon</title>
 	</head>
 	<body>
-		<h1>Upload File</h1>
-		<form hx-post="/upload_file" enctype="multipart/form-data">
+		<center><h1>Senmon</h1></center>
+		<form hx-post="/upload_file" hx-target="#encrypt_file" hx-encoding="multipart/form-data">
 			File Upload: <input name="file" type="file" multiple/>
 			Password: <input name="pwd" type="password"/>
 			<input type="submit"/>
 		</form>
+
+		<div id="encrypt_file"></div>
 
 		<form hx-post="/download_file" enctype="application/x-www-form-urlencoded">
 			File Download: <input name="file_name" type="text"/>
