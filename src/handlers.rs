@@ -1,6 +1,10 @@
+use aes_gcm::aead::Aead;
+use aes_gcm::{AeadCore, KeyInit};
 use axum::{http::StatusCode, response::Html, Form};
+use rand::Rng;
 use ring::rand::SecureRandom;
 use std::io::Read;
+use std::num::NonZeroU32;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
@@ -14,13 +18,19 @@ pub struct DatabaseConnection {
 #[derive(Deserialize)]
 pub struct DownloadReq {
     file_name: String,
+    password: String,
 }
 
 pub struct UploadFile {
-    file_name: String,
-    file_contents: String,
-    password: String,
-    salt: String,
+    pub file_name: String,
+    pub file_contents: String,
+    pub password: String,
+    pub salt: String,
+}
+
+pub struct DatabaseRow {
+    pub file_name: String,
+    pub salt: String,
 }
 
 pub async fn home() -> Html<String> {
@@ -31,28 +41,65 @@ pub async fn home() -> Html<String> {
 }
 
 pub async fn download_file(
+    axum::extract::State(state): axum::extract::State<DatabaseConnection>,
     Form(download_request): Form<DownloadReq>,
 ) -> axum::response::Result<String, StatusCode> {
-    let file_path = std::path::PathBuf::from(download_request.file_name);
-    if !file_path.exists() {
-        return Err(StatusCode::BAD_REQUEST);
+    let conn = state.ctx.deref().lock().unwrap();
+    let db_row: DatabaseRow = match conn.query_row(
+        r#"SELECT file_name, salt FROM file_state WHERE file_name=(?1);"#,
+        [&download_request.file_name],
+        |row| {
+            Ok(DatabaseRow {
+                file_name: row.get(0).unwrap(),
+                salt: row.get(1).unwrap(),
+            })
+        },
+    ) {
+        Ok(x) => x,
+        Err(_) => {
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    };
+    let path = std::path::PathBuf::from(db_row.file_name);
+    if !path.exists() {
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
     let mut count = 0;
-    for _ in file_path.components() {
-        count += 1;
+    for _ in path.components() {
         if count > 1 {
             return Err(StatusCode::BAD_REQUEST);
         }
+        count += 1;
     }
-    let data = std::fs::read_to_string(file_path).unwrap();
-    Ok(data)
+    let encrypted_string = std::fs::read_to_string(path).unwrap();
+    let encrypted_bytes_with_nonce = hex::decode(encrypted_string).unwrap();
+    let (nonce, encrypted_bytes) = encrypted_bytes_with_nonce.split_at(12);
+    let nonce = aes_gcm::Nonce::from_slice(nonce);
+
+    let mut password_hash: [u8; 32] = [0; 32];
+    ring::pbkdf2::derive(
+        ring::pbkdf2::PBKDF2_HMAC_SHA512,
+        NonZeroU32::new(600_000).unwrap(),
+        db_row.salt.as_bytes(),
+        download_request.password.as_bytes(),
+        &mut password_hash,
+    );
+    let key = aes_gcm::Key::<aes_gcm::Aes256Gcm>::from_slice(&password_hash);
+    let cipher = aes_gcm::Aes256Gcm::new(key);
+    let text = cipher.decrypt(nonce, encrypted_bytes).unwrap();
+    match std::str::from_utf8(&text) {
+        Ok(x) => return axum::response::Result::Ok(x.to_owned()),
+        Err(_) => return axum::response::Result::Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
 }
 
 pub fn generate_salt() -> String {
-    let rng = ring::rand::SystemRandom::new();
-    let mut salt: [u8; 32] = [0;32];
-    rng.fill(&mut salt).unwrap();
-    unsafe {std::str::from_utf8_unchecked(&salt).to_string()}
+    let salt: String = rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(32)
+        .map(char::from)
+        .collect();
+    salt
 }
 
 pub async fn upload_file(
@@ -64,11 +111,36 @@ pub async fn upload_file(
         Err(x) => return x,
     };
     let ctx = db.ctx.deref().lock().unwrap();
-    let _ = ctx.execute(
-        "INSERT INTO file_state(file_name, salt) VALUES(?1, ?2)",
-        [req.file_name, req.salt],
-    ).unwrap();
+    let res = encrypt_contents(req);
+    let _ = ctx
+        .execute(
+            "INSERT INTO file_state(file_name, salt) VALUES(?1, ?2)",
+            [res.file_name.clone(), res.salt.clone()],
+        )
+        .unwrap();
+    let _ = std::fs::write(res.file_name, res.file_contents).unwrap();
     StatusCode::OK
+}
+
+pub fn encrypt_contents(mut request: UploadFile) -> UploadFile {
+    let mut password_hash: [u8; 32] = [0; 32];
+    ring::pbkdf2::derive(
+        ring::pbkdf2::PBKDF2_HMAC_SHA512,
+        NonZeroU32::new(600_000).unwrap(),
+        request.salt.as_bytes(),
+        request.password.as_bytes(),
+        &mut password_hash,
+    );
+    let key = aes_gcm::Key::<aes_gcm::Aes256Gcm>::from_slice(&password_hash);
+    let cipher = aes_gcm::Aes256Gcm::new(key);
+    let nonce = aes_gcm::Aes256Gcm::generate_nonce(aes_gcm::aead::OsRng);
+    let encrypted_contents = cipher
+        .encrypt(&nonce, request.file_contents.as_bytes())
+        .unwrap();
+    let mut encrypted_contents_with_nonce = nonce.to_vec();
+    encrypted_contents_with_nonce.extend(encrypted_contents);
+    request.file_contents = hex::encode(encrypted_contents_with_nonce);
+    request
 }
 
 pub async fn parse_multipart(
