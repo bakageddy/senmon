@@ -2,7 +2,6 @@ use aes_gcm::aead::Aead;
 use aes_gcm::{AeadCore, KeyInit};
 use axum::{http::StatusCode, response::Html, Form};
 use rand::Rng;
-use ring::rand::SecureRandom;
 use std::io::Read;
 use std::num::NonZeroU32;
 use std::ops::Deref;
@@ -115,10 +114,10 @@ pub async fn upload_file(
     let _ = ctx
         .execute(
             "INSERT INTO file_state(file_name, salt) VALUES(?1, ?2)",
-            [res.file_name.clone(), res.salt.clone()],
+            [&res.file_name, &res.salt],
         )
         .unwrap();
-    let _ = std::fs::write(res.file_name, &res.file_contents).unwrap();
+    let _ = std::fs::write(&res.file_name, &res.file_contents).unwrap();
     Ok(res.file_contents)
 }
 

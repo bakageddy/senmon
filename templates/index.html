@@ -13,10 +13,12 @@
 
 		<div id="encrypt_file"></div>
 
-		<form hx-post="/download_file" enctype="application/x-www-form-urlencoded">
+		<form hx-post="/download_file" hx-target="#decrypt_file" enctype="application/x-www-form-urlencoded">
 			File Download: <input name="file_name" type="text"/>
 			Password: <input name="password" type="password"/>
 			<input type="submit"/>
 		</form>
+
+		<div id="decrypt_file"></div>
 	</body>
 </html>
