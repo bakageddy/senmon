@@ -5,6 +5,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use tower_http::services::ServeDir;
 use handlers::*;
 
 #[tokio::main]
@@ -23,6 +24,8 @@ async fn main() {
         .unwrap();
     let router = Router::new()
         .route("/", get(home))
+        .nest_service("/assets/css/", ServeDir::new("./assets/css/"))
+        .nest_service("/assets/icons/", ServeDir::new("./assets/icons/"))
         .route("/upload_file", post(upload_file))
         .route("/download_file", post(download_file))
         .with_state(application_state);

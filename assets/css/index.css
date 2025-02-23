@@ -1,0 +1,25 @@
+.nav-container {
+	margin-top: 0.1rem;
+	display: flex;
+	justify-content: space-between;
+}
+
+.svg-icon {
+	display: flex;
+	align-items: center;
+	justify-self: center;
+}
+
+.logo {
+	font-family: "Koulen";
+	font-weight: 800;
+	font-size: 1.5rem;
+	text-align: center;
+}
+
+.submission-form {
+	display: flex;
+	flex-direction: row;
+	justify-items: center;
+	align-items: center;
+}
