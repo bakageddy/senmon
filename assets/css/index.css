@@ -1,4 +1,31 @@
+body {
+	background-color: #F5F2E8;
+	margin: 0;
+}
+
+.root {
+	display: flex;
+	flex-flow: column;
+	height: 100%;
+}
+
+#menu-icon, #profile-icon {
+	padding-left: 0.7rem;
+	padding-right: 0.7rem;
+}
+
+.entry-button {
+	background-color: #FFC107;
+	border: 2px solid black;
+	padding: 0.3rem 0.7rem;
+	border-radius: 0.3rem;
+	box-shadow: 0.2rem 0.2rem;
+}
+
 .nav-container {
+	background-color: #7B8295;
+	border-radius: 0.5rem;
+	box-shadow: 0.2rem 0.2rem;
 	margin-top: 0.1rem;
 	display: flex;
 	justify-content: space-between;
@@ -11,10 +38,15 @@
 }
 
 .logo {
+	color: #191817;
 	font-family: "Koulen";
 	font-weight: 800;
 	font-size: 1.5rem;
 	text-align: center;
+}
+
+.logo>p {
+	margin: unset;
 }
 
 .submission-form {
@@ -22,4 +54,11 @@
 	flex-direction: row;
 	justify-items: center;
 	align-items: center;
+}
+
+.page-container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 1 1 auto;
 }

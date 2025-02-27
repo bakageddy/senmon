@@ -33,7 +33,7 @@ pub struct DatabaseRow {
 }
 
 pub async fn home() -> Html<String> {
-    let mut handle = std::fs::File::open("./templates/index.html").unwrap();
+    let mut handle = std::fs::File::open("./assets/html/home.html").unwrap();
     let mut buffer = String::new();
     let _ = handle.read_to_string(&mut buffer).unwrap();
     axum::response::Html(buffer)

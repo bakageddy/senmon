@@ -1,0 +1,11 @@
+<div class="submission-form">
+	<form hx-post="/download_file" hx-target="#file_upload_status" enctype="application/x-www-form-urlencoded">
+		<label for="file">File</label>
+		<input name="file_name" type="text" />
+		<label for="password">Password</label>
+		<input name="password" type="password" />
+		<input type="submit" />
+	</form>
+</div>
+
+<div id="file_download_status"></div>

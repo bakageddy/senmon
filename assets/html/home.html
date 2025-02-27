@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Koulen&display=swap" rel="stylesheet">
+	<link href="/assets/css/index.css" rel="stylesheet" />
+	<script src="https://unpkg.com/htmx.org@2.0.3"></script>
+	<title>Senmon</title>
+</head>
+
+<body>
+	<div class="root">
+
+		<div class="nav-container">
+			<div id="profile-icon" class="svg-icon">
+				<img src="/assets/icons/profile.svg" />
+			</div>
+			<div class="logo">
+				<p>
+					Senmon - PostQuantum Decentralized Storage System
+				</p>
+			</div>
+			<div id="menu-icon" class="svg-icon">
+				<img src="/assets/icons/menu-right.svg" />
+			</div>
+		</div>
+
+		<div class="page-container">
+			<div class="login-container">
+				<div class="login-footer">
+					<button class="entry-button" id="login-button" hx-get="/assets/templates/login.html"
+						hx-swap="outerHTML" hx-target=".login-container">
+						Login
+					</button>
+					<button class="entry-button" id="sign-up-button" hx-get="/assets/templates/auth.html"
+						hx-swap="outerHTML" hx-target=".login-container">
+						Sign Up
+					</button>
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+</body>
+
+</html>

@@ -1,4 +1,5 @@
 mod handlers;
+mod auth;
 
 use std::sync::{Arc, Mutex};
 use axum::{
@@ -15,6 +16,10 @@ async fn main() {
             "CREATE TABLE IF NOT EXISTS file_state(file_name VARCHAR PRIMARY KEY, salt VARCHAR);",
             [],
         ).unwrap();
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS user_reg(username VARCHAR PRIMARY KEY, password VARCHAR);",
+        []
+    ).unwrap();
     let application_state = DatabaseConnection {
         ctx: Arc::new(Mutex::new(conn)),
     };
@@ -26,8 +31,11 @@ async fn main() {
         .route("/", get(home))
         .nest_service("/assets/css/", ServeDir::new("./assets/css/"))
         .nest_service("/assets/icons/", ServeDir::new("./assets/icons/"))
-        .route("/upload_file", post(upload_file))
-        .route("/download_file", post(download_file))
+        .nest_service("/assets/templates/", ServeDir::new("./assets/templates/"))
+        .route("/api/auth", post(auth::auth))
+        .route("/api/login", post(auth::login))
+        .route("/api/upload_file", post(upload_file))
+        .route("/api/download_file", post(download_file))
         .with_state(application_state);
     axum::serve(listener, router).await.unwrap();
 }
