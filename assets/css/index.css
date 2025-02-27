@@ -3,6 +3,22 @@ body {
 	margin: 0;
 }
 
+input {
+	font-family: "Gudea";
+	background-color: #F5F2E8;
+	padding: 0.4rem;
+	margin: 0.3rem;
+	border-width: 2px;
+	border-style: solid;
+	border-radius: 0.4rem;
+}
+
+input::placeholder {
+	border-color: #222222;
+	color: #4e4e4e;
+}
+
+
 .root {
 	display: flex;
 	flex-flow: column;
@@ -15,11 +31,13 @@ body {
 }
 
 .entry-button {
+	font-family: "Koulen";
 	background-color: #FFC107;
 	border: 2px solid black;
+	margin: 1rem;
 	padding: 0.3rem 0.7rem;
 	border-radius: 0.3rem;
-	box-shadow: 0.2rem 0.2rem;
+	box-shadow: 0.4rem 0.4rem;
 }
 
 .nav-container {
@@ -61,4 +79,8 @@ body {
 	align-items: center;
 	justify-content: center;
 	flex: 1 1 auto;
+}
+
+.form-header {
+	font-family: "Gudea";
 }

@@ -24,7 +24,7 @@ async fn main() {
         ctx: Arc::new(Mutex::new(conn)),
     };
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:42069")
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:42069")
         .await
         .unwrap();
     let router = Router::new()
@@ -32,6 +32,7 @@ async fn main() {
         .nest_service("/assets/css/", ServeDir::new("./assets/css/"))
         .nest_service("/assets/icons/", ServeDir::new("./assets/icons/"))
         .nest_service("/assets/templates/", ServeDir::new("./assets/templates/"))
+        .nest_service("/assets/html/", ServeDir::new("./assets/html/"))
         .route("/api/auth", post(auth::auth))
         .route("/api/login", post(auth::login))
         .route("/api/upload_file", post(upload_file))
