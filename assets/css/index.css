@@ -1,5 +1,5 @@
 body {
-	background-color: #F5F2E8;
+	background-color: #DACCC1;
 	margin: 0;
 }
 
@@ -13,6 +13,7 @@ input {
 	border-radius: 0.4rem;
 }
 
+
 input::placeholder {
 	border-color: #222222;
 	color: #4e4e4e;
@@ -25,7 +26,8 @@ input::placeholder {
 	height: 100%;
 }
 
-#menu-icon, #profile-icon {
+#menu-icon,
+#profile-icon {
 	padding-left: 0.7rem;
 	padding-right: 0.7rem;
 }
@@ -40,11 +42,20 @@ input::placeholder {
 	box-shadow: 0.4rem 0.4rem;
 }
 
+.entry-button:hover, .entry-button:focus {
+	outline: unset;
+	transform: translate(-0.3rem, -0.3rem);
+	box-shadow: 0.6rem 0.6rem;
+	transition: ease-in-out;
+	transition-duration: 500ms;
+}
+
 .nav-container {
+	/* background-color: #4CAF50; */
 	background-color: #7B8295;
 	border-radius: 0.5rem;
-	box-shadow: 0.2rem 0.2rem;
-	margin-top: 0.1rem;
+	box-shadow: 0.4rem 0.4rem;
+	margin: 0.5rem 1.0rem;
 	display: flex;
 	justify-content: space-between;
 }
@@ -79,8 +90,4 @@ input::placeholder {
 	align-items: center;
 	justify-content: center;
 	flex: 1 1 auto;
-}
-
-.form-header {
-	font-family: "Gudea";
 }

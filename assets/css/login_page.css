@@ -6,7 +6,16 @@
 }
 
 .login-form {
+	outline: unset;
 	display: flex;
 	flex-flow: column;
 	padding: 2rem;
+}
+
+.login-field:focus {
+	outline: unset;
+	border-color: #222222;
+	transition: ease-in-out;
+	transition-duration: 200ms;
+	box-shadow: 0.4rem 0.4rem;
 }
