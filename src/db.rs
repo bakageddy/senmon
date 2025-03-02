@@ -7,6 +7,14 @@ pub struct DatabaseConnection {
     pub ctx: Arc<Mutex<rusqlite::Connection>>,
 }
 
+impl DatabaseConnection {
+    pub fn new(ctx: rusqlite::Connection) -> Self {
+        Self {
+            ctx: Arc::new(Mutex::new(ctx))
+        }
+    }
+}
+
 pub async fn is_present(db: &DatabaseConnection, user_name: &str) -> bool {
     let cnx = db.ctx.deref().lock().unwrap();
     let result: Result<u32, _> = cnx.query_row_and_then(

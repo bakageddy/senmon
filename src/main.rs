@@ -6,9 +6,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use db::*;
 use handlers::*;
-use std::sync::{Arc, Mutex};
 use tower_http::services::ServeDir;
 
 #[tokio::main]
@@ -24,9 +22,7 @@ async fn main() {
         "CREATE TABLE IF NOT EXISTS user_reg(user_id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR UNIQUE, password VARCHAR);",
         []
     ).unwrap();
-    let application_state = db::DatabaseConnection {
-        ctx: Arc::new(Mutex::new(conn)),
-    };
+    let application_state = db::DatabaseConnection::new(conn);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:42069")
         .await
