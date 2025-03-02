@@ -1,12 +1,10 @@
+use axum::http::StatusCode;
+use axum::Form;
+use axum::{body::Body, http::Response};
+use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 
-use axum::body::Body;
-use axum::http::StatusCode;
-use axum::response::Response;
-use axum::Form;
-use serde::{Deserialize, Serialize};
-
-use crate::DatabaseConnection;
+use crate::db::{self, *};
 
 #[derive(Serialize, Deserialize)]
 pub struct AuthRequest {
@@ -18,54 +16,61 @@ pub struct AuthRequest {
 pub async fn auth(
     axum::extract::State(state): axum::extract::State<DatabaseConnection>,
     Form(req): Form<AuthRequest>,
-) -> Response {
-    let cnx = state.ctx.deref().lock().unwrap();
-
-    println!("USERNAME: {} PASSWORD: {}", req.username, req.password);
-    if let Err(e) = cnx.execute(
-        "INSERT INTO user_reg(username, password) VALUES (?1, ?2);",
-        [req.username, req.password],
-    ) {
-        eprintln!("{e:#?}");
+) -> Response<Body> {
+    if is_present(&state, &req.username).await {
         return Response::builder()
-            .status(StatusCode::BAD_REQUEST)
+            .status(StatusCode::CONFLICT)
+            .header("HX-Location", "/")
             .body(Body::empty())
             .unwrap();
     }
-
-    Response::builder()
-        .status(StatusCode::ACCEPTED)
-        .header("HX-Location", "/assets/html/land.html")
-        .body(Body::empty())
-        .unwrap()
+    let result = db::add_user(&state, &req.username, &req.password).await;
+    return match result {
+        Some(_) => Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .header("HX-Location", "/")
+            .body(Body::empty())
+            .unwrap(),
+        None => Response::builder()
+            .status(StatusCode::ACCEPTED)
+            .header("HX-Location", "/assets/html/land.html")
+            .body(Body::empty())
+            .unwrap(),
+    };
 }
 
 #[axum::debug_handler]
 pub async fn login(
     axum::extract::State(state): axum::extract::State<DatabaseConnection>,
     Form(req): Form<AuthRequest>,
-) -> Response {
-
-    let cnx = state.ctx.deref().lock().unwrap();
-    println!("USERNAME: {} PASSWORD: {}", req.username, req.password);
-
-    let result: Result<String, _> = cnx.query_row(
-        "SELECT * FROM user_reg WHERE username=?1 AND password=?2;",
-        [&req.username, &req.password],
-        |r| r.get(0),
-    );
-
-    if let Err(e) = result {
-        eprintln!("LOGIN: {e:#?}");
+) -> Response<Body> {
+    if !is_present(&state, &req.username).await {
         return Response::builder()
-            .status(StatusCode::BAD_REQUEST)
+            .header("HX-Location", "/")
+            .body(Body::empty())
+            .unwrap();
+    }
+    if !validate_user(&state, &req.username, &req.password).await {
+        return Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .header("HX-Location", "/")
             .body(Body::empty())
             .unwrap();
     }
 
-    Response::builder()
-        .status(StatusCode::ACCEPTED)
-        .header("HX-Location", "/assets/html/land.html")
-        .body(Body::empty())
-        .unwrap()
+    let result = get_user_id(&state, &req.username).await;
+    if let Ok(id) = result {
+        return Response::builder()
+            .status(StatusCode::ACCEPTED)
+            .header("HX-Location", "/assets/html/land.html")
+            .header("Set-Cookie", format!("session={id}"))
+            .body(Body::empty())
+            .unwrap();
+    } else {
+        return Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .header("HX-Location", "/")
+            .body(Body::empty())
+            .unwrap();
+    }
 }

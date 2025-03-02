@@ -1,18 +1,14 @@
+use std::ops::Deref;
 use aes_gcm::aead::Aead;
 use aes_gcm::{AeadCore, KeyInit};
 use axum::{http::StatusCode, response::Html, Form};
 use rand::Rng;
 use std::io::Read;
 use std::num::NonZeroU32;
-use std::ops::Deref;
-use std::sync::{Arc, Mutex};
+use crate::db;
 
 use serde::Deserialize;
 
-#[derive(Clone)]
-pub struct DatabaseConnection {
-    pub ctx: Arc<Mutex<rusqlite::Connection>>,
-}
 
 #[derive(Deserialize)]
 pub struct DownloadReq {
@@ -40,7 +36,7 @@ pub async fn home() -> Html<String> {
 }
 
 pub async fn download_file(
-    axum::extract::State(state): axum::extract::State<DatabaseConnection>,
+    axum::extract::State(state): axum::extract::State<db::DatabaseConnection>,
     Form(download_request): Form<DownloadReq>,
 ) -> axum::response::Result<String, StatusCode> {
     let conn = state.ctx.deref().lock().unwrap();
@@ -102,7 +98,7 @@ pub fn generate_salt() -> String {
 }
 
 pub async fn upload_file(
-    axum::extract::State(db): axum::extract::State<DatabaseConnection>,
+    axum::extract::State(db): axum::extract::State<db::DatabaseConnection>,
     form_input: axum::extract::Multipart,
 ) -> axum::response::Result<String, StatusCode> {
     let req = match parse_multipart(form_input).await {

@@ -7,14 +7,6 @@
 			<button class="entry-button" type="submit">Login</button>
 		</form>
 	</div>
-	<div class="login-footer">
-		<button class="entry-button" id="login-button" hx-get="/assets/templates/login.html"
-			hx-push-url="/assets/html/land.html" hx-swap="outerHTML">
-			Registered?
-		</button>
-		<button class="entry-button" id="sign-up-button" hx-get="/assets/templates/auth.html"
-			hx-target=".login-container" hx-swap="outerHTML">
-			New?
-		</button>
+	<div hx-get="/assets/templates/login-footer.html" hx-trigger="load" hx-swap="outerHTML" hx-target="this">
 	</div>
 </div>

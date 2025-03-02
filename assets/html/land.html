@@ -1,5 +1,25 @@
 <html>
-	<body>
-		I am alive
-	</body>
+
+<head>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Koulen&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Gudea:ital,wght@0,400;0,700;1,400&display=swap"
+		rel="stylesheet">
+
+	<link href="/assets/css/index.css" rel="stylesheet" />
+	<script src="https://unpkg.com/htmx.org@2.0.3"></script>
+	<title>Senmon</title>
+</head>
+
+<body>
+	<div class="root">
+		<div hx-get="/assets/templates/navbar.html" hx-trigger="load" hx-target="this" hx-swap="outerHTML">
+		</div>
+		<div>
+			<p>Welcome to senmon</p>
+		</div>
+	</div>
+</body>
+
 </html>

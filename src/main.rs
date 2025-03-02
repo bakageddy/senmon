@@ -1,26 +1,30 @@
-mod handlers;
 mod auth;
+mod db;
+mod handlers;
 
-use std::sync::{Arc, Mutex};
 use axum::{
     routing::{get, post},
     Router,
 };
-use tower_http::services::ServeDir;
+use db::*;
 use handlers::*;
+use std::sync::{Arc, Mutex};
+use tower_http::services::ServeDir;
 
 #[tokio::main]
 async fn main() {
     let conn = rusqlite::Connection::open("./file_storage.db").unwrap();
-    let _ = conn.execute(
+    let _ = conn
+        .execute(
             "CREATE TABLE IF NOT EXISTS file_state(file_name VARCHAR PRIMARY KEY, salt VARCHAR);",
             [],
-        ).unwrap();
+        )
+        .unwrap();
     let _ = conn.execute(
-        "CREATE TABLE IF NOT EXISTS user_reg(username VARCHAR PRIMARY KEY, password VARCHAR);",
+        "CREATE TABLE IF NOT EXISTS user_reg(user_id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR UNIQUE, password VARCHAR);",
         []
     ).unwrap();
-    let application_state = DatabaseConnection {
+    let application_state = db::DatabaseConnection {
         ctx: Arc::new(Mutex::new(conn)),
     };
 
