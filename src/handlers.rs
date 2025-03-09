@@ -125,10 +125,17 @@ pub fn generate_salt() -> String {
 pub async fn upload_file(
     axum::extract::State(db): axum::extract::State<db::DatabaseConnection>,
     form_input: axum::extract::Multipart,
-) -> axum::response::Result<String, StatusCode> {
+// ) -> axum::response::Result<String, StatusCode> {
+) -> axum::response::Response {
     let req = match parse_multipart(form_input).await {
         Ok(r) => r,
-        Err(x) => return Err(x),
+        Err(_) => {
+            return axum::response::Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .header("HX-Redirect", "/assets/html/land.html")
+                .body(Body::empty())
+                .unwrap();
+        }
     };
     let ctx = db.ctx.deref().lock().unwrap();
     let res = encrypt_contents(req);
@@ -138,8 +145,13 @@ pub async fn upload_file(
             [&res.file_name, &res.salt],
         )
         .unwrap();
+
     let _ = std::fs::write(&res.file_name, &res.file_contents).unwrap();
-    Ok(res.file_contents)
+    return axum::response::Response::builder()
+        .status(StatusCode::OK)
+        .header("HX-Redirect", "/assets/html/land.html")
+        .body(Body::empty())
+        .unwrap();
 }
 
 pub fn encrypt_contents(mut request: UploadFile) -> UploadFile {

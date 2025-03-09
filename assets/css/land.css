@@ -17,35 +17,35 @@
 	padding: 0.4rem;
 	transition-duration: 500ms;
 	transition: ease-in-out;
+	border: 2px solid black;
 	border-radius: 0.3rem;
 	width: 100%;
 }
 
 button.input-field {
+	font-family: "Koulen";
 	font-weight: bold;
 	background-color: #FFC107;
-	outline: unset;
-	border: unset;
 	margin-top: 1rem;
 	display: inline;
 }
 
-button.input-field:hover, button.input-field:focus {
+button.input-field:hover, button.input-field:focus, input-field:hover {
 	box-shadow: 0.4rem 0.4rem;
 	transform: translate(-0.3rem, -0.3rem);
 	transition-duration: 300ms;
+	border: 2px solid black;
 }
 
 .input-field:focus {
 	outline: unset;
-	border: unset;
 	transition: ease-in-out;
 	transition-duration: 300ms;
 	box-shadow: 0.4rem 0.4rem;
 	transform: translate(-0.3rem, -0.3rem);
 }
 
-input-field[type=file] {
+.input-field[type=file] {
 	outline: unset;
 	border: unset;
 }
