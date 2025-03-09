@@ -125,7 +125,6 @@ pub fn generate_salt() -> String {
 pub async fn upload_file(
     axum::extract::State(db): axum::extract::State<db::DatabaseConnection>,
     form_input: axum::extract::Multipart,
-// ) -> axum::response::Result<String, StatusCode> {
 ) -> axum::response::Response {
     let req = match parse_multipart(form_input).await {
         Ok(r) => r,

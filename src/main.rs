@@ -1,6 +1,7 @@
 mod auth;
 mod db;
 mod handlers;
+mod session;
 
 use axum::{
     routing::{get, post},
@@ -24,6 +25,11 @@ async fn main() {
             []
         )
         .unwrap();
+    let _ = conn
+        .execute(
+            "CREATE TABLE IF NOT EXISTS sessions(session_id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES user_reg(user_id), expires TEXT);",
+            []
+        ).unwrap();
     let application_state = db::DatabaseConnection::new(conn);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:42069")
