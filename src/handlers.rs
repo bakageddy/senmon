@@ -68,15 +68,13 @@ pub async fn download_file(
             .body(Body::empty())
             .unwrap();
     }
-    let mut count = 0;
-    for _ in path.components() {
-        if count > 1 {
-            return axum::response::Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body(Body::empty())
-                .unwrap();
-        }
-        count += 1;
+
+    let count = path.components().count();
+    if count > 1 {
+        return axum::response::Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(Body::empty())
+            .unwrap();
     }
 
     let encrypted_string = std::fs::read_to_string(path).unwrap();
@@ -100,10 +98,13 @@ pub async fn download_file(
             return axum::response::Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, "text/plain")
-                .header(header::CONTENT_DISPOSITION, format!("attachment; filename={}", &db_row.file_name))
+                .header(
+                    header::CONTENT_DISPOSITION,
+                    format!("attachment; filename={}", &db_row.file_name),
+                )
                 .body(Body::new(x.to_owned()))
                 .unwrap();
-        },
+        }
         Err(_) => {
             return axum::response::Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -145,7 +146,18 @@ pub async fn upload_file(
         )
         .unwrap();
 
-    let _ = std::fs::write(&res.file_name, &res.file_contents).unwrap();
+    let mut root = std::path::PathBuf::from("./stash/");
+    root = root.join(std::path::PathBuf::from(&res.file_name));
+
+    let count = root.components().count();
+    if count > 2 {
+        return axum::response::Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(Body::empty())
+            .unwrap();
+    }
+
+    let _ = std::fs::write(root, &res.file_contents).unwrap();
     return axum::response::Response::builder()
         .status(StatusCode::OK)
         .header("HX-Redirect", "/assets/html/land.html")
