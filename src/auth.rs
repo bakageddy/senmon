@@ -4,6 +4,7 @@ use axum::{body::Body, http::Response};
 use serde::{Deserialize, Serialize};
 
 use crate::db::{self, *};
+use crate::session::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct AuthRequest {
@@ -11,7 +12,7 @@ pub struct AuthRequest {
     password: String,
 }
 
-#[axum::debug_handler]
+// #[axum::debug_handler]
 pub async fn auth(
     axum::extract::State(state): axum::extract::State<DatabaseConnection>,
     Form(req): Form<AuthRequest>,
@@ -23,22 +24,28 @@ pub async fn auth(
             .body(Body::empty())
             .unwrap();
     }
-    let result = db::add_user(&state, &req.username, &req.password).await;
+    let _ = db::add_user(&state, &req.username, &req.password).await.unwrap();
+    let result = db::get_user_id(&state, &req.username).await;
     return match result {
-        Some(_) => Response::builder()
+        Ok(id) => {
+            let session = Session::new(id);
+            session_serialize(&state, &session).await.unwrap();
+            Response::builder()
+                .status(StatusCode::ACCEPTED)
+                .header("HX-Location", "/assets/html/land.html")
+                .header("Set-Cookie", format!("session={}", session.session_id))
+                .body(Body::empty())
+                .unwrap()
+        }
+        Err(_) => Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .header("HX-Location", "/")
-            .body(Body::empty())
-            .unwrap(),
-        None => Response::builder()
-            .status(StatusCode::ACCEPTED)
-            .header("HX-Location", "/assets/html/land.html")
             .body(Body::empty())
             .unwrap(),
     };
 }
 
-#[axum::debug_handler]
+// #[axum::debug_handler]
 pub async fn login(
     axum::extract::State(state): axum::extract::State<DatabaseConnection>,
     Form(req): Form<AuthRequest>,
@@ -49,6 +56,7 @@ pub async fn login(
             .body(Body::empty())
             .unwrap();
     }
+
     if !validate_user(&state, &req.username, &req.password).await {
         return Response::builder()
             .status(StatusCode::UNAUTHORIZED)
@@ -59,10 +67,12 @@ pub async fn login(
 
     let result = get_user_id(&state, &req.username).await;
     if let Ok(id) = result {
+        let session = Session::new(id);
+        session_serialize(&state, &session).await.unwrap();
         return Response::builder()
             .status(StatusCode::ACCEPTED)
             .header("HX-Location", "/assets/html/land.html")
-            .header("Set-Cookie", format!("session={id}"))
+            .header("Set-Cookie", format!("session={}", session.session_id))
             .body(Body::empty())
             .unwrap();
     } else {

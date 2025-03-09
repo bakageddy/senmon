@@ -72,9 +72,9 @@ pub async fn validate_user(db: &DatabaseConnection, user_name: &str, password: &
     }
 }
 
-pub async fn get_user_id(db: &DatabaseConnection, user_name: &str) -> Result<u32, rusqlite::Error> {
+pub async fn get_user_id(db: &DatabaseConnection, user_name: &str) -> Result<u64, rusqlite::Error> {
     let cnx = db.ctx.deref().lock().unwrap();
-    let result: Result<u32, _> = cnx.query_row_and_then(
+    let result = cnx.query_row_and_then(
         "SELECT * FROM user_reg WHERE username=?1",
         [user_name],
         |row| row.get(0),
