@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+
 <html>
 
 <head>
@@ -8,7 +10,9 @@
 		rel="stylesheet">
 
 	<link href="/assets/css/index.css" rel="stylesheet" />
+	<link href="/assets/css/land.css" rel="stylesheet" />
 	<script src="https://unpkg.com/htmx.org@2.0.3"></script>
+	<script src="/assets/js/htmx-download.js"></script>
 	<title>Senmon</title>
 </head>
 
@@ -16,8 +20,11 @@
 	<div class="root">
 		<div hx-get="/assets/templates/navbar.html" hx-trigger="load" hx-target="this" hx-swap="outerHTML">
 		</div>
-		<div>
-			<p>Welcome to senmon</p>
+		<div class="flex-container">
+			<div hx-get="/assets/templates/download_file.html" hx-trigger="load" hx-target="this" hx-swap="outerHTML">
+			</div>
+			<div hx-get="/assets/templates/upload_file.html" hx-trigger="load" hx-target="this" hx-swap="outerHTML">
+			</div>
 		</div>
 	</div>
 </body>

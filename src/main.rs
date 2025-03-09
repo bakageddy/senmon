@@ -18,10 +18,12 @@ async fn main() {
             [],
         )
         .unwrap();
-    let _ = conn.execute(
-        "CREATE TABLE IF NOT EXISTS user_reg(user_id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR UNIQUE, password VARCHAR);",
-        []
-    ).unwrap();
+    let _ = conn
+        .execute(
+            "CREATE TABLE IF NOT EXISTS user_reg(user_id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR UNIQUE, password VARCHAR);",
+            []
+        )
+        .unwrap();
     let application_state = db::DatabaseConnection::new(conn);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:42069")
@@ -32,6 +34,7 @@ async fn main() {
         .nest_service("/assets/css/", ServeDir::new("./assets/css/"))
         .nest_service("/assets/icons/", ServeDir::new("./assets/icons/"))
         .nest_service("/assets/templates/", ServeDir::new("./assets/templates/"))
+        .nest_service("/assets/js/", ServeDir::new("./assets/js/"))
         .nest_service("/assets/html/", ServeDir::new("./assets/html/"))
         .route("/api/auth", post(auth::auth))
         .route("/api/login", post(auth::login))

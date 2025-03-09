@@ -1,14 +1,15 @@
-use std::ops::Deref;
+use crate::db;
 use aes_gcm::aead::Aead;
 use aes_gcm::{AeadCore, KeyInit};
+use axum::body::Body;
+use axum::http::header;
 use axum::{http::StatusCode, response::Html, Form};
 use rand::Rng;
 use std::io::Read;
 use std::num::NonZeroU32;
-use crate::db;
+use std::ops::Deref;
 
 use serde::Deserialize;
-
 
 #[derive(Deserialize)]
 pub struct DownloadReq {
@@ -38,9 +39,9 @@ pub async fn home() -> Html<String> {
 pub async fn download_file(
     axum::extract::State(state): axum::extract::State<db::DatabaseConnection>,
     Form(download_request): Form<DownloadReq>,
-) -> axum::response::Result<String, StatusCode> {
+) -> axum::response::Response<Body> {
     let conn = state.ctx.deref().lock().unwrap();
-    let db_row: DatabaseRow = match conn.query_row(
+    let db_row = conn.query_row(
         r#"SELECT file_name, salt FROM file_state WHERE file_name=(?1);"#,
         [&download_request.file_name],
         |row| {
@@ -49,23 +50,35 @@ pub async fn download_file(
                 salt: row.get(1).unwrap(),
             })
         },
-    ) {
+    );
+    let db_row = match db_row {
         Ok(x) => x,
         Err(_) => {
-            return Err(StatusCode::BAD_REQUEST);
+            return axum::response::Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Body::empty())
+                .unwrap();
         }
     };
-    let path = std::path::PathBuf::from(db_row.file_name);
+
+    let path = std::path::PathBuf::from(&db_row.file_name);
     if !path.exists() {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        return axum::response::Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(Body::empty())
+            .unwrap();
     }
     let mut count = 0;
     for _ in path.components() {
         if count > 1 {
-            return Err(StatusCode::BAD_REQUEST);
+            return axum::response::Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Body::empty())
+                .unwrap();
         }
         count += 1;
     }
+
     let encrypted_string = std::fs::read_to_string(path).unwrap();
     let encrypted_bytes_with_nonce = hex::decode(encrypted_string).unwrap();
     let (nonce, encrypted_bytes) = encrypted_bytes_with_nonce.split_at(12);
@@ -83,8 +96,20 @@ pub async fn download_file(
     let cipher = aes_gcm::Aes256Gcm::new(key);
     let text = cipher.decrypt(nonce, encrypted_bytes).unwrap();
     match std::str::from_utf8(&text) {
-        Ok(x) => return axum::response::Result::Ok(x.to_owned()),
-        Err(_) => return axum::response::Result::Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Ok(x) => {
+            return axum::response::Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, "text/plain")
+                .header(header::CONTENT_DISPOSITION, format!("attachment; filename={}", &db_row.file_name))
+                .body(Body::new(x.to_owned()))
+                .unwrap();
+        },
+        Err(_) => {
+            return axum::response::Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .unwrap();
+        }
     }
 }
 
