@@ -3,6 +3,8 @@ mod db;
 mod handlers;
 mod session;
 
+use std::ops::Deref;
+
 use axum::{
     routing::{get, post},
     Router,
@@ -13,24 +15,12 @@ use tower_http::services::ServeDir;
 #[tokio::main]
 async fn main() {
     let conn = rusqlite::Connection::open("./file_storage.db").unwrap();
-    let _ = conn
-        .execute(
-            "CREATE TABLE IF NOT EXISTS file_state(file_name VARCHAR PRIMARY KEY, salt VARCHAR);",
-            [],
-        )
-        .unwrap();
-    let _ = conn
-        .execute(
-            "CREATE TABLE IF NOT EXISTS user_reg(user_id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR UNIQUE, password VARCHAR);",
-            []
-        )
-        .unwrap();
-    let _ = conn
-        .execute(
-            "CREATE TABLE IF NOT EXISTS sessions(session_id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES user_reg(user_id), expires TEXT);",
-            []
-        ).unwrap();
     let application_state = db::DatabaseConnection::new(conn);
+
+    if init_db(&application_state) {
+        eprintln!("FAILED TO INITIALIZE Database");
+        return;
+    }
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:42069")
         .await
@@ -48,4 +38,22 @@ async fn main() {
         .route("/api/download_file", post(download_file))
         .with_state(application_state);
     axum::serve(listener, router).await.unwrap();
+}
+
+pub fn init_db(db: &db::DatabaseConnection) -> bool {
+    let conn = db.ctx.deref().lock().unwrap();
+    let queries = [
+        "CREATE TABLE IF NOT EXISTS file_state(file_name VARCHAR PRIMARY KEY, salt VARCHAR);",
+        "CREATE INDEX IF NOT EXISTS file_state_file_name ON file_state(file_name);",
+        "CREATE TABLE IF NOT EXISTS user_reg(user_id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR UNIQUE, password VARCHAR);",
+        "CREATE INDEX IF NOT EXISTS user_reg_user_id_username ON user_reg(user_id, username);",
+        "CREATE TABLE IF NOT EXISTS sessions(session_id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES user_reg(user_id), expires TEXT);",
+        "CREATE INDEX IF NOT EXISTS sessions_session_id_user_id ON sessions(session_id, user_id);",
+    ];
+    for query in queries {
+        if let Err(_) = conn.execute(query, []) {
+            return false;
+        }
+    }
+    true
 }

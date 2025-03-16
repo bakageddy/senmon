@@ -1,13 +1,15 @@
-use crate::db;
+use crate::db::{self, get_user_from_session_id, get_user_id, is_present_session};
 use aes_gcm::aead::Aead;
 use aes_gcm::{AeadCore, KeyInit};
 use axum::body::Body;
 use axum::http::header;
 use axum::{http::StatusCode, response::Html, Form};
+use axum_extra::extract::CookieJar;
 use rand::Rng;
 use std::io::Read;
 use std::num::NonZeroU32;
 use std::ops::Deref;
+use std::u64;
 
 use serde::Deserialize;
 
@@ -38,10 +40,41 @@ pub async fn home() -> Html<String> {
 
 pub async fn download_file(
     axum::extract::State(state): axum::extract::State<db::DatabaseConnection>,
+    jar: CookieJar,
     Form(download_request): Form<DownloadReq>,
 ) -> axum::response::Response<Body> {
-    let conn = state.ctx.deref().lock().unwrap();
-    let db_row = conn.query_row(
+
+    let session_id: u64;
+    if let Some(cookie) = jar.get("session") {
+        session_id = cookie.value().parse().unwrap();
+        if !is_present_session(&state, session_id).await {
+            return axum::response::Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .header("HX-Redirect", "/assets/html/home.html")
+                .body(Body::empty())
+                .unwrap();
+        }
+    } else {
+        return axum::response::Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .header("HX-Redirect", "/assets/html/home.html")
+            .body(Body::empty())
+            .unwrap();
+    }
+
+    let user_name: String;
+    if let Some(s) = db::get_user_from_session_id(&state, session_id).await {
+        user_name = s;
+    } else {
+        return axum::response::Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .header("HX-Redirect", "/assets/html/home.html")
+            .body(Body::empty())
+            .unwrap();
+    }
+
+    let cnx = state.ctx.lock().unwrap();
+    let db_row = cnx.query_row(
         r#"SELECT file_name, salt FROM file_state WHERE file_name=(?1);"#,
         [&download_request.file_name],
         |row| {
@@ -56,23 +89,29 @@ pub async fn download_file(
         Err(_) => {
             return axum::response::Response::builder()
                 .status(StatusCode::BAD_REQUEST)
+                .header("HX-Redirect", "/assets/html/home.html")
                 .body(Body::empty())
                 .unwrap();
         }
     };
 
-    let path = std::path::PathBuf::from(&db_row.file_name);
-    if !path.exists() {
-        return axum::response::Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .body(Body::empty())
-            .unwrap();
-    }
+    let mut root = std::path::PathBuf::from("./stash");
 
+    let path = std::path::PathBuf::from(&db_row.file_name);
     let count = path.components().count();
     if count > 1 {
         return axum::response::Response::builder()
             .status(StatusCode::BAD_REQUEST)
+            .header("HX-Redirect", "/assets/html/home.html")
+            .body(Body::empty())
+            .unwrap();
+    }
+
+    root = root.join(user_name).join(&path);
+    if !root.exists() {
+        return axum::response::Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .header("HX-Redirect", "/assets/html/home.html")
             .body(Body::empty())
             .unwrap();
     }
@@ -108,6 +147,7 @@ pub async fn download_file(
         Err(_) => {
             return axum::response::Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header("HX-Redirect", "/assets/html/home.html")
                 .body(Body::empty())
                 .unwrap();
         }
@@ -125,14 +165,46 @@ pub fn generate_salt() -> String {
 
 pub async fn upload_file(
     axum::extract::State(db): axum::extract::State<db::DatabaseConnection>,
+    jar: CookieJar,
     form_input: axum::extract::Multipart,
 ) -> axum::response::Response {
+
+    let user_name: String;
+    let ssn_id: u64;
+    if let Some(cookie) = jar.get("session") {
+        let session_id = cookie.value();
+        ssn_id = session_id.parse().unwrap();
+        if !is_present_session(&db, ssn_id).await {
+            return axum::response::Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .header("HX-Redirect", "/assets/html/home.html")
+                .body(Body::empty())
+                .unwrap();
+        } else {
+            if let Some(x) = get_user_from_session_id(&db, ssn_id).await {
+                user_name = x;
+            } else {
+                return axum::response::Response::builder()
+                    .status(StatusCode::UNAUTHORIZED)
+                    .header("HX-Redirect", "/assets/html/home.html")
+                    .body(Body::empty())
+                    .unwrap();
+            }
+        }
+    } else {
+        return axum::response::Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .header("HX-Redirect", "/assets/html/home.html")
+            .body(Body::empty())
+            .unwrap();
+    }
+
     let req = match parse_multipart(form_input).await {
         Ok(r) => r,
         Err(_) => {
             return axum::response::Response::builder()
                 .status(StatusCode::BAD_REQUEST)
-                .header("HX-Redirect", "/assets/html/land.html")
+                .header("HX-Redirect", "/assets/html/home.html")
                 .body(Body::empty())
                 .unwrap();
         }
@@ -146,18 +218,28 @@ pub async fn upload_file(
         )
         .unwrap();
 
-    let mut root = std::path::PathBuf::from("./stash/");
-    root = root.join(std::path::PathBuf::from(&res.file_name));
+    let path = std::path::PathBuf::from(&res.file_name);
 
-    let count = root.components().count();
-    if count > 2 {
+    let count = path.components().count();
+    if count > 1 {
         return axum::response::Response::builder()
             .status(StatusCode::BAD_REQUEST)
+            .header("HX-Redirect", "/assets/html/home.html")
             .body(Body::empty())
             .unwrap();
     }
 
-    let _ = std::fs::write(root, &res.file_contents).unwrap();
+    let mut root = std::path::PathBuf::from("./stash/");
+    root = root.join(&user_name).join(&path);
+
+    if let Err(_) = std::fs::write(root, &res.file_contents) {
+        return axum::response::Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .header("HX-Redirect", "/assets/html/home.html")
+            .body(Body::empty())
+            .unwrap();
+    }
+
     return axum::response::Response::builder()
         .status(StatusCode::OK)
         .header("HX-Redirect", "/assets/html/land.html")
