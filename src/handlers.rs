@@ -1,4 +1,4 @@
-use crate::db::{self, get_user_from_session_id, get_user_id, is_present_session};
+use crate::db::{self, get_user_from_session_id, is_present_session};
 use aes_gcm::aead::Aead;
 use aes_gcm::{AeadCore, KeyInit};
 use axum::body::Body;
@@ -43,7 +43,6 @@ pub async fn download_file(
     jar: CookieJar,
     Form(download_request): Form<DownloadReq>,
 ) -> axum::response::Response<Body> {
-
     let session_id: u64;
     if let Some(cookie) = jar.get("session") {
         session_id = cookie.value().parse().unwrap();
@@ -163,14 +162,15 @@ pub fn generate_salt() -> String {
     salt
 }
 
+#[axum::debug_handler]
 pub async fn upload_file(
     axum::extract::State(db): axum::extract::State<db::DatabaseConnection>,
     jar: CookieJar,
     form_input: axum::extract::Multipart,
 ) -> axum::response::Response {
-
     let user_name: String;
     let ssn_id: u64;
+
     if let Some(cookie) = jar.get("session") {
         let session_id = cookie.value();
         ssn_id = session_id.parse().unwrap();
@@ -230,6 +230,7 @@ pub async fn upload_file(
     }
 
     let mut root = std::path::PathBuf::from("./stash/");
+    let _ = std::fs::create_dir(root.join(&user_name)).unwrap();
     root = root.join(&user_name).join(&path);
 
     if let Err(_) = std::fs::write(root, &res.file_contents) {

@@ -20,14 +20,13 @@ impl DatabaseConnection {
 pub async fn session_serialize(db: &DatabaseConnection, ssn: &Session) -> Option<rusqlite::Error> {
     let cnx = db.ctx.deref().lock().unwrap();
     let mut stmt = cnx
-        .prepare("INSERT INTO sessions(session_id, user_id, expires) VALUES(?1, ?2, ?3);")
+        .prepare_cached("INSERT INTO sessions(session_id, user_id, expires) VALUES(?1, ?2, ?3);")
         .unwrap();
     let result: Result<usize, _> =
         stmt.execute((ssn.session_id, ssn.user_id, ssn.expires_at.to_rfc2822()));
     match result {
-        Ok(1) => None,
+        Ok(_) => None,
         Err(e) => Some(e),
-        _ => Some(rusqlite::Error::QueryReturnedNoRows),
     }
 }
 
@@ -47,7 +46,7 @@ pub async fn session_valid(db: &DatabaseConnection, ssn: &Session) -> bool {
 pub async fn get_user_from_session_id(db: &DatabaseConnection, session_id: u64) -> Option<String> {
     let cnx = db.ctx.lock().unwrap();
     let result: Result<String, _> = cnx.query_row_and_then(
-        "SELECT user_name FROM sessions s JOIN user_reg u ON s.user_id = u.user_id WHERE s.session_id = ?1;",
+        "SELECT username FROM sessions s JOIN user_reg u ON s.user_id = u.user_id WHERE s.session_id = ?1;",
         [session_id],
         |r| r.get(0)
     );
@@ -59,13 +58,13 @@ pub async fn get_user_from_session_id(db: &DatabaseConnection, session_id: u64) 
 
 pub async fn is_present_session(db: &DatabaseConnection, session_id: u64) -> bool {
     let cnx = db.ctx.deref().lock().unwrap();
-    let res = cnx.query_row(
+    let res: Result<u32, _> = cnx.query_row(
         "SELECT 1 FROM sessions WHERE session_id=?1;",
         [session_id],
         |r| r.get(0),
     );
     return match res {
-        Ok(1) => true,
+        Ok(_) => true,
         _ => false,
     };
 }

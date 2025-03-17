@@ -17,8 +17,8 @@ async fn main() {
     let conn = rusqlite::Connection::open("./file_storage.db").unwrap();
     let application_state = db::DatabaseConnection::new(conn);
 
-    if init_db(&application_state) {
-        eprintln!("FAILED TO INITIALIZE Database");
+    if !init_db(&application_state) {
+        eprintln!("FAILED TO INITIALIZE DATABASE");
         return;
     }
 
@@ -41,19 +41,24 @@ async fn main() {
 }
 
 pub fn init_db(db: &db::DatabaseConnection) -> bool {
-    let conn = db.ctx.deref().lock().unwrap();
-    let queries = [
-        "CREATE TABLE IF NOT EXISTS file_state(file_name VARCHAR PRIMARY KEY, salt VARCHAR);",
-        "CREATE INDEX IF NOT EXISTS file_state_file_name ON file_state(file_name);",
-        "CREATE TABLE IF NOT EXISTS user_reg(user_id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR UNIQUE, password VARCHAR);",
-        "CREATE INDEX IF NOT EXISTS user_reg_user_id_username ON user_reg(user_id, username);",
-        "CREATE TABLE IF NOT EXISTS sessions(session_id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES user_reg(user_id), expires TEXT);",
-        "CREATE INDEX IF NOT EXISTS sessions_session_id_user_id ON sessions(session_id, user_id);",
-    ];
-    for query in queries {
-        if let Err(_) = conn.execute(query, []) {
-            return false;
-        }
+    let cnx = db.ctx.deref().lock().unwrap();
+
+    let result = cnx.execute_batch(
+        "BEGIN;
+        CREATE TABLE IF NOT EXISTS file_state(file_name VARCHAR PRIMARY KEY, salt VARCHAR);
+        CREATE INDEX IF NOT EXISTS file_state_file_name ON file_state(file_name);
+
+        CREATE TABLE IF NOT EXISTS user_reg(user_id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR UNIQUE, password VARCHAR);
+        CREATE INDEX IF NOT EXISTS user_reg_user_id_username ON user_reg(user_id, username);
+
+        CREATE TABLE IF NOT EXISTS sessions(session_id UNSIGNED BIG INT PRIMARY KEY, user_id INTEGER REFERENCES user_reg(user_id), expires TEXT);
+        CREATE INDEX IF NOT EXISTS sessions_session_id_user_id ON sessions(session_id, user_id);
+        COMMIT;"
+    );
+
+    if let Err(why) = result {
+        eprintln!("{:?}", why);
+        return false;
     }
-    true
+    return true;
 }
