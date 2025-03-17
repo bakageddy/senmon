@@ -2,6 +2,7 @@ mod auth;
 mod db;
 mod handlers;
 mod session;
+mod fm;
 
 use std::ops::Deref;
 

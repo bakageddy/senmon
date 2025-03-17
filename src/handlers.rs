@@ -72,7 +72,7 @@ pub async fn download_file(
             .unwrap();
     }
 
-    let cnx = state.ctx.lock().unwrap();
+    let cnx = state.ctx.deref().lock().unwrap();
     let db_row = cnx.query_row(
         r#"SELECT file_name, salt FROM file_state WHERE file_name=(?1);"#,
         [&download_request.file_name],
@@ -96,26 +96,26 @@ pub async fn download_file(
 
     let mut root = std::path::PathBuf::from("./stash");
 
-    let path = std::path::PathBuf::from(&db_row.file_name);
-    let count = path.components().count();
-    if count > 1 {
-        return axum::response::Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .header("HX-Redirect", "/assets/html/home.html")
-            .body(Body::empty())
-            .unwrap();
-    }
+    // let path = std::path::PathBuf::from(&db_row.file_name);
+    // let count = path.components().count();
+    // if count > 1 {
+    //     return axum::response::Response::builder()
+    //         .status(StatusCode::BAD_REQUEST)
+    //         .header("HX-Redirect", "/assets/html/home.html")
+    //         .body(Body::empty())
+    //         .unwrap();
+    // }
 
-    root = root.join(user_name).join(&path);
+    root = root.join(user_name).join(&db_row.file_name);
     if !root.exists() {
         return axum::response::Response::builder()
-            .status(StatusCode::BAD_REQUEST)
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
             .header("HX-Redirect", "/assets/html/home.html")
             .body(Body::empty())
             .unwrap();
     }
 
-    let encrypted_string = std::fs::read_to_string(path).unwrap();
+    let encrypted_string = std::fs::read_to_string(root).unwrap();
     let encrypted_bytes_with_nonce = hex::decode(encrypted_string).unwrap();
     let (nonce, encrypted_bytes) = encrypted_bytes_with_nonce.split_at(12);
     let nonce = aes_gcm::Nonce::from_slice(nonce);
@@ -229,10 +229,22 @@ pub async fn upload_file(
             .unwrap();
     }
 
-    let mut root = std::path::PathBuf::from("./stash/");
-    let _ = std::fs::create_dir(root.join(&user_name)).unwrap();
-    root = root.join(&user_name).join(&path);
+    let mut root = std::path::PathBuf::from("./stash").join(&user_name);
+    match std::fs::exists(&root) {
+        Ok(true) => {}
+        Ok(false) => {
+            std::fs::create_dir(&root).unwrap();
+        }
+        Err(_) => {
+            return axum::response::Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header("HX-Redirect", "/assets/html/home.html")
+                .body(Body::empty())
+                .unwrap();
+        }
+    }
 
+    root = root.join(&path);
     if let Err(_) = std::fs::write(root, &res.file_contents) {
         return axum::response::Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)

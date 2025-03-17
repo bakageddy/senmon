@@ -44,7 +44,7 @@ pub async fn session_valid(db: &DatabaseConnection, ssn: &Session) -> bool {
 }
 
 pub async fn get_user_from_session_id(db: &DatabaseConnection, session_id: u64) -> Option<String> {
-    let cnx = db.ctx.lock().unwrap();
+    let cnx = db.ctx.deref().lock().unwrap();
     let result: Result<String, _> = cnx.query_row_and_then(
         "SELECT username FROM sessions s JOIN user_reg u ON s.user_id = u.user_id WHERE s.session_id = ?1;",
         [session_id],
