@@ -1,10 +1,11 @@
+<link rel="stylesheet" href="/assets/css/form.css"/>
 <div class="form-container">
 	<div class="submission-form">
-		<form hx-post="/api/upload_file" hx-target="#file_upload_status" hx-encoding="multipart/form-data"
+		<form class="submission-form" hx-post="/api/upload_file" hx-target="#file_upload_status" hx-encoding="multipart/form-data"
 			hx-swap="innerHTML">
 			<input class="input-field" name="file" type="file" />
 			<input class="input-field" name="pwd" type="password" placeholder="Password" />
-			<button class="input-field" type="submit">Upload!</button>
+			<button class="input-field submit-button" type="submit">Upload!</button>
 		</form>
 	</div>
 

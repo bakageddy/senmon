@@ -1,10 +1,11 @@
+<link rel="stylesheet" href="/assets/css/form.css"/>
 <div class="form-container">
 	<div class="submission-form">
-		<form hx-post="/api/download_file" enctype="application/x-www-form-urlencoded"
+		<form class= "submission-form" hx-post="/api/download_file" enctype="application/x-www-form-urlencoded"
 			hx-ext="htmx-download">
 			<input class="input-field" name="file_name" type="text" placeholder="File Name" />
 			<input class="input-field" name="password" type="password" placeholder="Password" />
-			<button class="input-field" type="submit">Download!</button>
+			<button class="input-field submit-button" type="submit">Download!</button>
 		</form>
 	</div>
 
