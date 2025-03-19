@@ -6,7 +6,7 @@ mod session;
 use std::ops::Deref;
 
 use axum::{
-    routing::{get, post},
+    routing::{get, post, RouterIntoService},
     Router,
 };
 use handlers::*;
@@ -27,18 +27,16 @@ async fn main() {
         .unwrap();
     let router = Router::new()
         .route("/", get(home))
-        .nest_service("/assets/css/", ServeDir::new("./assets/css/"))
-        .nest_service("/assets/icons/", ServeDir::new("./assets/icons/"))
-        .nest_service("/assets/templates/", ServeDir::new("./assets/templates/"))
-        .nest_service("/assets/js/", ServeDir::new("./assets/js/"))
-        .nest_service("/assets/html/", ServeDir::new("./assets/html/"))
+        .nest_service("/assets", ServeDir::new("./assets"))
         .route("/api/auth", post(auth::auth))
         .route("/api/login", post(auth::login))
         .route("/api/upload_file", post(upload_file))
         .route("/api/download_file", post(download_file))
         .with_state(application_state);
+
     axum::serve(listener, router).await.unwrap();
 }
+
 
 pub fn init_db(db: &db::DatabaseConnection) -> bool {
     let cnx = db.ctx.deref().lock().unwrap();
