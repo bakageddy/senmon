@@ -9,7 +9,6 @@ use rand::Rng;
 use std::io::Read;
 use std::num::NonZeroU32;
 use std::ops::Deref;
-use std::u64;
 
 use serde::Deserialize;
 
@@ -43,7 +42,7 @@ pub async fn download_file(
     jar: CookieJar,
     Form(download_request): Form<DownloadReq>,
 ) -> axum::response::Response<Body> {
-    let session_id: u64;
+    let session_id: u32;
     if let Some(cookie) = jar.get("session") {
         session_id = cookie.value().parse().unwrap();
         if !is_present_session(&state, session_id).await {
@@ -61,6 +60,7 @@ pub async fn download_file(
             .unwrap();
     }
 
+    // TODO: combine both get_user_from_session_id and get_user_id;
     let user_name: String;
     if let Some(s) = db::get_user_from_session_id(&state, session_id).await {
         user_name = s;
@@ -72,10 +72,21 @@ pub async fn download_file(
             .unwrap();
     }
 
+    let user_id: u32;
+    if let Ok(id) = db::get_user_id(&state, &user_name).await {
+        user_id = id;
+    } else {
+        return axum::response::Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .header("HX-Redirect", "/assets/html/home.html")
+            .body(Body::empty())
+            .unwrap();
+    }
+
     let cnx = state.ctx.deref().lock().unwrap();
     let db_row = cnx.query_row(
-        r#"SELECT file_name, salt FROM file_state WHERE file_name=(?1);"#,
-        [&download_request.file_name],
+        r#"SELECT file_name, salt FROM file_state WHERE file_owner = ?1 AND file_name=(?2);"#,
+        (user_id, &download_request.file_name),
         |row| {
             Ok(DatabaseRow {
                 file_name: row.get(0).unwrap(),
@@ -96,17 +107,17 @@ pub async fn download_file(
 
     let mut root = std::path::PathBuf::from("./stash");
 
-    // let path = std::path::PathBuf::from(&db_row.file_name);
-    // let count = path.components().count();
-    // if count > 1 {
-    //     return axum::response::Response::builder()
-    //         .status(StatusCode::BAD_REQUEST)
-    //         .header("HX-Redirect", "/assets/html/home.html")
-    //         .body(Body::empty())
-    //         .unwrap();
-    // }
+    let path = std::path::PathBuf::from(&db_row.file_name);
+    let count = path.components().count();
+    if count > 1 {
+        return axum::response::Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .header("HX-Redirect", "/assets/html/home.html")
+            .body(Body::empty())
+            .unwrap();
+    }
 
-    root = root.join(user_name).join(&db_row.file_name);
+    root = root.join(user_name).join(&path);
     if !root.exists() {
         return axum::response::Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -131,7 +142,8 @@ pub async fn download_file(
     let key = aes_gcm::Key::<aes_gcm::Aes256Gcm>::from_slice(&password_hash);
     let cipher = aes_gcm::Aes256Gcm::new(key);
     let text = cipher.decrypt(nonce, encrypted_bytes).unwrap();
-    match std::str::from_utf8(&text) {
+
+    match String::from_utf8(text) {
         Ok(x) => {
             return axum::response::Response::builder()
                 .status(StatusCode::OK)
@@ -140,7 +152,7 @@ pub async fn download_file(
                     header::CONTENT_DISPOSITION,
                     format!("attachment; filename={}", &db_row.file_name),
                 )
-                .body(Body::new(x.to_owned()))
+                .body(Body::new(x))
                 .unwrap();
         }
         Err(_) => {
@@ -169,7 +181,7 @@ pub async fn upload_file(
     form_input: axum::extract::Multipart,
 ) -> axum::response::Response {
     let user_name: String;
-    let ssn_id: u64;
+    let ssn_id: u32;
 
     if let Some(cookie) = jar.get("session") {
         let session_id = cookie.value();

@@ -43,7 +43,7 @@ pub async fn session_valid(db: &DatabaseConnection, ssn: &Session) -> bool {
     };
 }
 
-pub async fn get_user_from_session_id(db: &DatabaseConnection, session_id: u64) -> Option<String> {
+pub async fn get_user_from_session_id(db: &DatabaseConnection, session_id: u32) -> Option<String> {
     let cnx = db.ctx.deref().lock().unwrap();
     let result: Result<String, _> = cnx.query_row_and_then(
         "SELECT username FROM sessions s JOIN user_reg u ON s.user_id = u.user_id WHERE s.session_id = ?1;",
@@ -56,7 +56,7 @@ pub async fn get_user_from_session_id(db: &DatabaseConnection, session_id: u64) 
     };
 }
 
-pub async fn is_present_session(db: &DatabaseConnection, session_id: u64) -> bool {
+pub async fn is_present_session(db: &DatabaseConnection, session_id: u32) -> bool {
     let cnx = db.ctx.deref().lock().unwrap();
     let res: Result<u32, _> = cnx.query_row(
         "SELECT 1 FROM sessions WHERE session_id=?1;",
@@ -93,7 +93,7 @@ pub async fn validate_user(db: &DatabaseConnection, user_name: &str, password: &
     }
 }
 
-pub async fn get_user_id(db: &DatabaseConnection, user_name: &str) -> Result<u64, rusqlite::Error> {
+pub async fn get_user_id(db: &DatabaseConnection, user_name: &str) -> Result<u32, rusqlite::Error> {
     let cnx = db.ctx.deref().lock().unwrap();
     let result = cnx.query_row_and_then(
         "SELECT * FROM user_reg WHERE username=?1",
