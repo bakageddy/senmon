@@ -1,4 +1,5 @@
-use crate::db::{self, get_user_from_session_id, is_present_session};
+use crate::db::{self, is_present_session};
+use crate::db::get_user_from_session_id;
 use aes_gcm::aead::Aead;
 use aes_gcm::{AeadCore, KeyInit};
 use axum::body::Body;
@@ -221,12 +222,24 @@ pub async fn upload_file(
                 .unwrap();
         }
     };
+
+    let user_id: u32;
+    if let Ok(id) = db::get_user_id(&db, &user_name).await {
+        user_id = id;
+    } else {
+        return axum::response::Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .header("HX-Redirect", "/assets/html/home.html")
+            .body(Body::empty())
+            .unwrap();
+    }
+
     let ctx = db.ctx.deref().lock().unwrap();
     let res = encrypt_contents(req);
     let _ = ctx
         .execute(
-            "INSERT INTO file_state(file_name, salt) VALUES(?1, ?2)",
-            [&res.file_name, &res.salt],
+            "INSERT INTO file_state(file_owner, file_name, salt) VALUES(?1, ?2, ?3)",
+            (user_id, &res.file_name, &res.salt),
         )
         .unwrap();
 
