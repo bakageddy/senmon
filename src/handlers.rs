@@ -43,7 +43,7 @@ pub async fn download_file(
     jar: CookieJar,
     Form(download_request): Form<DownloadReq>,
 ) -> axum::response::Response<Body> {
-    let session_id: u64;
+    let session_id: u32;
     if let Some(cookie) = jar.get("session") {
         session_id = cookie.value().parse().unwrap();
         if !is_present_session(&state, session_id).await {
@@ -169,7 +169,7 @@ pub async fn upload_file(
     form_input: axum::extract::Multipart,
 ) -> axum::response::Response {
     let user_name: String;
-    let ssn_id: u64;
+    let ssn_id: u32;
 
     if let Some(cookie) = jar.get("session") {
         let session_id = cookie.value();

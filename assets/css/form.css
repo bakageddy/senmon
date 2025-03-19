@@ -28,7 +28,7 @@
 	transition-duration: 300ms;
 }
 
-.submit-button:hover, .submit-button:focus, .input-field:hover {
+.submit-button:hover, .submit-button:focus, .input-field:hover, .input-field:focus {
 	transform: translate(-0.4rem, -0.4rem);
 	box-shadow: 0.4rem 0.4rem;
 }
