@@ -45,7 +45,7 @@ pub fn init_db(db: &db::DatabaseConnection) -> bool {
 
     let result = cnx.execute_batch(
         "BEGIN;
-        CREATE TABLE IF NOT EXISTS file_state(file_name VARCHAR PRIMARY KEY, salt VARCHAR);
+        CREATE TABLE IF NOT EXISTS file_state(file_owner INTEGER REFERENCES user_reg(user_id), file_name VARCHAR PRIMARY KEY, salt VARCHAR);
         CREATE INDEX IF NOT EXISTS file_state_file_name ON file_state(file_name);
 
         CREATE TABLE IF NOT EXISTS user_reg(user_id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR UNIQUE, password VARCHAR);
