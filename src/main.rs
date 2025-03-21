@@ -27,6 +27,7 @@ async fn main() {
         .unwrap();
     let router = Router::new()
         .route("/", get(home))
+        .route("/favicon.ico", get(icon))
         .nest_service("/assets", ServeDir::new("./assets"))
         .route("/api/auth", post(auth::auth))
         .route("/api/login", post(auth::login))

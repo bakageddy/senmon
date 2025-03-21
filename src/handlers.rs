@@ -4,8 +4,11 @@ use aes_gcm::aead::Aead;
 use aes_gcm::{AeadCore, KeyInit};
 use axum::body::Body;
 use axum::http::header;
+use axum::response::Response;
 use axum::{http::StatusCode, response::Html, Form};
 use axum_extra::extract::CookieJar;
+use axum_extra::headers::ContentType;
+use axum_extra::TypedHeader;
 use rand::Rng;
 use std::io::Read;
 use std::num::NonZeroU32;
@@ -36,6 +39,16 @@ pub async fn home() -> Html<String> {
     let mut buffer = String::new();
     let _ = handle.read_to_string(&mut buffer).unwrap();
     axum::response::Html(buffer)
+}
+
+pub async fn icon() -> (TypedHeader<ContentType>, Vec<u8>) {
+    let mut handle = std::fs::File::open("./assets/icons/favicon.ico").unwrap();
+    let mut buffer = Vec::new();
+    let _ = handle.read_to_end(&mut buffer).unwrap();
+    (
+        TypedHeader(ContentType::png()),
+        buffer
+    )
 }
 
 pub async fn download_file(
