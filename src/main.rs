@@ -2,11 +2,12 @@ mod auth;
 mod db;
 mod handlers;
 mod session;
+mod types;
 
 use std::ops::Deref;
 
 use axum::{
-    routing::{get, post, RouterIntoService},
+    routing::{get, post},
     Router,
 };
 use handlers::*;
@@ -37,7 +38,6 @@ async fn main() {
 
     axum::serve(listener, router).await.unwrap();
 }
-
 
 pub fn init_db(db: &db::DatabaseConnection) -> bool {
     let cnx = db.ctx.deref().lock().unwrap();
